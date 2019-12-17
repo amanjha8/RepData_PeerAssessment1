@@ -7,19 +7,100 @@ output:
 
 
 ## Loading and preprocessing the data
+We can load the given data using read.csv()
+```{r echo=TRUE}
+library("knitr")
+library("dplyr")
+doc<- read.csv("activity.csv")
+```
 
 
+## What is total number of steps taken per day?
+By analyzing the total no. of steps travelled each day we can see that the subject travels
+around 9000-13000 steps (as it has the highest frequency)
+```{r echo=TRUE}
+doc_sum<- group_by(doc,date)%>%summarize(sum= sum(steps,na.rm = TRUE))
+doc_sum$sum[which(is.na(doc_sum$sum))] <- 0
+hist(doc_sum$sum,
+     xlab = "Total no. of steps each day",
+     ylab = "Frequency",
+     main ="Histogram of total steps travelled each day")
+```
 
-## What is mean total number of steps taken per day?
-
-
+The mean and median for total no. of steps each day is :- 
+```{r echo=TRUE}
+summary(doc_sum$sum)[3:4]
+```
 
 ## What is the average daily activity pattern?
-
-
+Lets see the plot of average steps taken vs time:- (at x axis 345 means 3:45am)
+```{r echo=TRUE}
+doc_avg<- doc%>%group_by(interval=factor(doc$interval))%>%summarize(average=mean(steps,na.rm = TRUE))
+plot(doc_avg$interval,
+     doc_avg$average,
+     type="l",
+     xlab="Time in the day(in 24-hr format)",
+     ylab="average steps taken each day ")
+title("Average steps taken for each interval")
+```
+<p>As we can see the most steps travelled is between 8:00am to 9:10am</p>
+```{r echo=TRUE}
+doc_avg[which(doc_avg$average==max(doc_avg$average)),1]
+```
 
 ## Imputing missing values
-
-
-
+We can remove the missing values present for steps calculated for specific days :- <br>
+1.**Mean Imputation**:- the interval where NA is present is changed to the mean of the 5-minute interval 
+for every non-NA day.<br>
+2. **Median Imputation:-**the interval where NA is present is changed to the median of the 5-minute interval 
+for every non-NA day.<p>
+I have used  mean strategy and added to doc_1:-
+```{r echo=TRUE}
+doc_1<-doc
+vec<-  which(is.na(doc_1$steps))
+for(i in vec){
+  interval<- doc_1$interval[i]
+  doc_1$steps[i]<- doc_avg$average[which(doc_avg$interval==interval)]
+}
+which(is.na(doc_1$steps))
+```
+Integer(0) proves that no NA values remain
+<p>This change can also be seen by an histogram used for total no. of steps travelled:- 
+```{r echo=TRUE}
+doc_sum1<- group_by(doc_1,date)%>%summarize(sum= sum(steps))
+hist(doc_sum1$sum,
+     xlab = "Total no. of steps each day(without na)",
+     ylab = "Frequency",
+     main ="Histogram of total steps travelled each day")
+```
+</p>
 ## Are there differences in activity patterns between weekdays and weekends?
+You can see at below graph that the subject traveles more on weekends than on weekdays.Also , as we can see in the graph that the subject has travelled more steps during time interval **12:00-6:00pm** on weekends than on weekdays<br>
+You can divide the dates according to weekdays using *weekdays()*<br>
+Now by summarizing the details for weekdays and weekends we panel-plot them as follows:- <p>
+```{r echo=TRUE}
+time<- as.Date(doc_1$date)
+days<- weekdays(time)
+doc_new<- cbind(doc_1,days)
+doc_weekday<- filter(doc_new,days!="Saturday" & days!="Sunday")
+doc_weekends<- filter(doc_new,days=="Saturday" | days=="Sunday")
+
+doc_avg_weekday<- doc_weekday%>%group_by(interval=factor(interval))%>%summarize(average=mean(steps))
+doc_avg_weekend<- doc_weekends%>%group_by(interval=factor(interval))%>%summarize(average=mean(steps))
+par(mfrow=c(1,2))
+plot(doc_avg_weekday$interval,
+     doc_avg_weekday$average,
+     type="h",
+     xlab="Time in the day",
+     ylab="average steps taken each day ")
+title("At weekdays")
+
+plot(doc_avg_weekend$interval,
+     doc_avg_weekend$average,
+     type="l",
+     xlab="Time in the day",
+     ylab="average steps taken each day",
+     ylim=c(0,200))
+
+title("At weekends")
+```
